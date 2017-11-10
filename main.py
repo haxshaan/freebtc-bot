@@ -1,6 +1,8 @@
 import os
 import pickle
 import time
+import socket
+import requests
 
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
@@ -135,6 +137,124 @@ class HaxBitCoins(object):
 
         for cookie in cookies:
             self.driver.add_cookie(cookie)
+
+
+class AutomateMobile(object):
+    def __init__(self):
+        pass
+
+    def check_internet(self):
+        remote_server = "www.google.com"
+
+        try:
+            # Lets check if DNS could be resolved
+            host = socket.gethostbyname(remote_server)
+            s = socket.create_connection((host, 80), 2)
+            s.getsockname()
+            return True
+
+        except:
+            pass
+        return False
+
+    def tether_on(self):
+        os.system('adb shell service call connectivity 33 i32 1')
+
+    def tether_off(self):
+        os.system('adb shell service call connectivity 33 i32 0')
+
+    def get_ip(self):
+        i = 5
+        j = 20
+        while j and not self.check_internet():
+            if j == 1:
+                try:
+                    self.tether_off()
+                    time.sleep(2)
+                    self.tether_on()
+                    time.sleep(4)
+                    j = 20
+                except:
+                    print("Check USB connection!")
+                    j = 20
+                    pass
+
+            else:
+                print("Waiting for Mobile Data!")
+                time.sleep(2)
+                j -= 1
+        else:
+            while i:
+                try:
+                    if i % 2 == 0:
+                        my_ip = requests.get('https://api.ipify.org/?format=json').json()['ip']
+                        return my_ip + "\n"
+                    else:
+                        my_ip = requests.get('https://wtfismyip.com/text').text
+                        return my_ip + "\n"
+
+                except Exception as e:
+                    print("Unable to get IP, trying again.. Error: ", e)
+                    i -= 1
+                    continue
+
+    def data_on(self):
+        os.system("adb shell svc data enable")
+
+    def data_off(self):
+        os.system("adb shell svc data disable")
+
+    def turn_off_data(self):
+        while True:
+            try:
+                print("Turning OFF Mobile Data, please wait..")
+                self.data_off()
+                time.sleep(1)
+
+            except:
+                print("Something went wrong, trying again..")
+                continue
+            else:
+                print("Mobile Data turned OFF!\n")
+                break
+
+    def turn_on_data(self):
+        while True:
+            try:
+                print("Now Turning Mobile Data ON, please wait..")
+
+                self.data_on()
+
+                time.sleep(1)
+
+            except:
+                print("Check connections! trying again..")
+                continue
+
+            else:
+                print("Mobile Data turned ON!\n")
+                break
+
+
+mobile = AutomateMobile()
+
+
+def change_ip():
+    while True:
+        try:
+            mobile.turn_off_data()
+
+            time.sleep(1)
+
+            mobile.turn_on_data()
+
+            time.sleep(3)
+
+        except:
+            print("Can't interact with Phone, check usb connection!")
+            continue
+        else:
+            break
 
 
 def check_pikle(new_ac_list):
