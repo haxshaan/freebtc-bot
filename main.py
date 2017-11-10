@@ -126,6 +126,7 @@ class HaxBitCoins(object):
         else:
             print("Can't Find Roll table!!")
 
+    def quit_fox(self):
         self.driver.quit()
 
     def save_session(self, cookie_name):
@@ -172,7 +173,7 @@ class AutomateMobile(object):
                     self.tether_off()
                     time.sleep(2)
                     self.tether_on()
-                    time.sleep(4)
+                    time.sleep(6)
                     j = 20
                 except:
                     print("Check USB connection!")
@@ -311,6 +312,7 @@ def main():
                 old_dict.update({item: 0.00})
 
             pickle.dump(old_dict, open("dumps/accounts_map.hk", "wb"))
+            print("Added new accounts to dump database")
         else:
             print("No new account found.")
         accounts_time = old_dict
@@ -318,9 +320,12 @@ def main():
     HaxObject = HaxBitCoins()
 
     while True:
-        t1 = time.time()
 
         for acc in accounts_time.keys():
+
+            print("Your current IP Address is: %s" % (mobile.get_ip()))
+
+            t1 = time.time()
             t2 = float(accounts_time[acc])
             time_left = t1 - t2
             if time_left > 60*60 or time_left == t1:
@@ -335,22 +340,25 @@ def main():
                     time.sleep(4)
                     HaxObject.roll_table()
                     HaxObject.save_session(dump_location + acc + ".hax")
+                    HaxObject.quit_fox()
                 else:
                     HaxObject.login_homepage()
                     time.sleep(4)
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.roll_table()
                     HaxObject.save_session(dump_location + acc + ".hax")
+                    HaxObject.quit_fox()
 
                 counter += 1
-                continue
 
             else:
                 print("Waiting for Next challenge!")
                 time.sleep(10)
                 print("Time left: %s") % (str(time_left))
-                continue
 
+            print("Changing your IP before Next Roll")
+            change_ip()
+            time.time(8)
 
 if __name__ == '__main__':
     main()
