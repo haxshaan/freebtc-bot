@@ -112,17 +112,21 @@ class HaxBitCoins(object):
                     self.driver.find_element_by_xpath('/html/body/div[11]/a').click()
                 else:
                     pass
+                try:
 
-                if self.wait_for_element('//*[@id="free_play_digits"]', 5):
-                    i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
-                    ii = self.driver.find_element_by_xpath('//*[@id="free_play_second_digit"]').text
-                    iii = self.driver.find_element_by_xpath('//*[@id="free_play_third_digit"]').text
-                    iv = self.driver.find_element_by_xpath('//*[@id="free_play_fourth_digit"]').text
-                    v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
+                    if self.wait_for_element('//*[@id="free_play_digits"]', 5):
+                        i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
+                        ii = self.driver.find_element_by_xpath('//*[@id="free_play_second_digit"]').text
+                        iii = self.driver.find_element_by_xpath('//*[@id="free_play_third_digit"]').text
+                        iv = self.driver.find_element_by_xpath('//*[@id="free_play_fourth_digit"]').text
+                        v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
 
-                    print("\nYou Got: %r %r %r %r %r") % (i, ii, iii, iv, v)
-                else:
-                    print("Can't find reward!")
+                        print("\nYou Got: %r %r %r %r %r") % (i, ii, iii, iv, v)
+                    else:
+                        print("Can't find reward!")
+                except:
+                    pass
+
         else:
             print("Can't Find Roll table!!")
 
@@ -144,60 +148,11 @@ class AutomateMobile(object):
     def __init__(self):
         pass
 
-    def check_internet(self):
-        remote_server = "www.google.com"
-
-        try:
-            # Lets check if DNS could be resolved
-            host = socket.gethostbyname(remote_server)
-            s = socket.create_connection((host, 80), 2)
-            s.getsockname()
-            return True
-
-        except:
-            pass
-        return False
-
     def tether_on(self):
         os.system('adb shell service call connectivity 33 i32 1')
 
     def tether_off(self):
         os.system('adb shell service call connectivity 33 i32 0')
-
-    def get_ip(self):
-        i = 5
-        j = 20
-        while j and not self.check_internet():
-            if j == 1:
-                try:
-                    self.tether_off()
-                    time.sleep(2)
-                    self.tether_on()
-                    time.sleep(6)
-                    j = 20
-                except:
-                    print("Check USB connection!")
-                    j = 20
-                    pass
-
-            else:
-                print("Waiting for Mobile Data!")
-                time.sleep(2)
-                j -= 1
-        else:
-            while i:
-                try:
-                    if i % 2 == 0:
-                        my_ip = requests.get('https://api.ipify.org/?format=json').json()['ip']
-                        return my_ip + "\n"
-                    else:
-                        my_ip = requests.get('https://wtfismyip.com/text').text
-                        return my_ip + "\n"
-
-                except Exception as e:
-                    print("Unable to get IP, trying again.. Error: ", e)
-                    i -= 1
-                    continue
 
     def data_on(self):
         os.system("adb shell svc data enable")
@@ -223,39 +178,106 @@ class AutomateMobile(object):
         while True:
             try:
                 print("Now Turning Mobile Data ON, please wait..")
-
                 self.data_on()
-
                 time.sleep(1)
 
             except:
                 print("Check connections! trying again..")
                 continue
-
             else:
                 print("Mobile Data turned ON!\n")
                 break
 
 
-mobile = AutomateMobile()
+def check_internet():
+    remote_server = "www.google.com"
+
+    try:
+        # Lets check if DNS could be resolved
+        host = socket.gethostbyname(remote_server)
+        s = socket.create_connection((host, 80), 2)
+        s.getsockname()
+        return True
+
+    except:
+        pass
+    return False
+
+def get_ip():
+    i = 5
+    j = 20
+    while j and not check_internet():
+        print("Waiting for Mobile Data!")
+        time.sleep(2)
+        j -= 1
+    else:
+        while i:
+            try:
+                if i % 2 == 0:
+                    my_ip = requests.get('https://api.ipify.org/?format=json').json()['ip']
+                    return my_ip
+                else:
+                    my_ip = requests.get('https://wtfismyip.com/text').text
+                    return my_ip
+
+            except Exception as e:
+                print("Unable to get IP, trying again.. Error: ", e)
+                i -= 1
+                continue
+
+while True:
+    try:
+        ip_method = int(input("Select your Internet Connection method.\n1. Dongle, 2. USB TETHERING\n>"))
+    except ValueError:
+        print("Enter only integers, try again..")
+    if ip_method == 1 or ip_method == 2:
+        break
+    else:
+        print("Enter valid response!")
+        continue
+
+connection_name = str(input("Enter the name of your Dial-up Connection: "))
+
+if ip_method == 1:
+    def change_ip():
+        while True:
+            try:
+                modem_off(connection_name)
+                time.sleep(1)
+                modem_on(connection_name)
+                time.sleep(3)
+
+            except:
+                print("Can't interact with Phone, check usb connection!")
+                continue
+            else:
+                break
+
+else:
+    mobile = AutomateMobile()
+
+    def change_ip():
+        while True:
+
+            try:
+                mobile.turn_off_data()
+                time.sleep(1)
+                mobile.turn_on_data()
+                time.sleep(3)
+
+            except:
+                print("Can't interact with Phone, check usb connection!")
+                continue
+            else:
+                break
 
 
-def change_ip():
-    while True:
-        try:
-            mobile.turn_off_data()
+def modem_off(connection):
+    os.system("rasdial" + connection)
 
-            time.sleep(1)
 
-            mobile.turn_on_data()
-
-            time.sleep(3)
-
-        except:
-            print("Can't interact with Phone, check usb connection!")
-            continue
-        else:
-            break
+def modem_on(connection):
+    os.system("rasdial" + connection + "/disconnect")
 
 
 def check_pikle(new_ac_list):
@@ -323,7 +345,7 @@ def main():
 
         for acc in accounts_time.keys():
 
-            print("Your current IP Address is: %s" % (mobile.get_ip()))
+            print("Your current IP Address is: %s" % get_ip())
 
             t1 = time.time()
             t2 = float(accounts_time[acc])
@@ -332,9 +354,12 @@ def main():
 
                 time.sleep(4)
 
+                print("Opening url.")
                 HaxObject.load_url(captcha_page)
 
                 if os.path.isfile(dump_location + acc + ".hax"):
+                    print("Cookie file found for the account: " + acc + ".hax")
+                    print("\nRestoring previous cookie.")
                     HaxObject.load_session(dump_location + acc + ".hax")
                     HaxObject.load_url(captcha_page)
                     time.sleep(4)
@@ -358,7 +383,7 @@ def main():
 
             print("Changing your IP before Next Roll")
             change_ip()
-            time.time(8)
+            time.time(4)
 
 if __name__ == '__main__':
     main()
