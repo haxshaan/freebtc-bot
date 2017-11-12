@@ -61,9 +61,14 @@ class HaxBitCoins(object):
         input("Press any Key to continue....")
 
     def load_url(self, url):
-        self.driver.get(url)
+        while True:
+            if check_internet():
+                self.driver.get(url)
+                break
+            else:
+                continue
 
-    def login_homepage(self):
+    def login_homepage(self, user, passw):
 
         # Wait for Login Script to appear then click
         if self.wait_for_element('/html/body/div[2]/div/nav/section/ul/li[10]/a', 10):
@@ -74,58 +79,89 @@ class HaxBitCoins(object):
 
         # Wait for Login form to appear then submit
         if self.wait_for_element('//*[@id="login_form"]', 10):
-            self.driver.find_element_by_xpath('//*[@id="login_form_btc_address"]').send_keys("shaanhax@gmail.com")
-            self.driver.find_element_by_xpath('//*[@id="login_form_password"]').send_keys('s99887766')
-            self.driver.find_element_by_xpath('//*[@id="login_button"]').click()
-            time.sleep(2)
+            print("Login form found.")
+            try:
+                username = self.driver.find_element_by_xpath('//*[@id="login_form_btc_address"]')
+                password = self.driver.find_element_by_xpath('//*[@id="login_form_password"]')
+                self.driver.execute_script('arguments[0].value = arguments[1]', username, user)
+                self.driver.execute_script('arguments[0].value = arguments[1]', password, passw)
+                self.driver.find_element_by_xpath('//*[@id="login_button"]').click()
+                time.sleep(2)
+            except:
+                print("Can't login")
+                raise SystemExit(0)
+            else:
+                print("Can't find email field!")
+        else:
+            print("Login form not found in the page")
+
+    def is_element_clickable(self, xpath, time1):
+        try:
+            WebDriverWait(self.driver, time1).until(
+                EC.element_to_be_clickable((By.XPATH, xpath)))
+        except:
+            return False
+        return True
 
     def roll_table(self):
 
+        print("Current Balance: ", self.driver.find_element_by_xpath('//*[@id="balance"]').text)
+
         # Go to roll tab
 
-        if self.wait_for_element('/html/body/div[2]/div/nav/section/ul/li[2]/a', 3):
-            self.driver.find_element_by_xpath('/html/body/div[2]/div/nav/section/ul/li[2]/a').click()
+        roll_tab = '/html/body/div[2]/div/nav/section/ul/li[2]/a'
+        if self.wait_for_element(roll_tab, 15):
+            self.driver.execute_script("arguments[0].click;", roll_tab)
         else:
-            print("Can't see earnBTC tab")
+            print("Can't see FreeBTC tab")
 
         # Wait for roll table
 
-        if self.wait_for_element('//*[@id="free_play_payout_table"]', 10):
+        if self.wait_for_element('//*[@id="free_play_payout_table"]', 7):
+            roll_btn = '//*[@id="free_play_form_button"]'
+            self.driver.execute_script('arguments[0].scrollIntoView;', roll_btn)
 
             # Check if Roll available:
-            if self.wait_for_element('//*[@id="wait"]', 4):
-                print("Roll countdown detected!")
+
+            i = 1
+            while self.is_element_clickable(roll_btn, 6):
+
+                if i == 1:
+                    self.wait_for_captcha()
+                    self.driver.find_element_by_xpath(roll_btn).click()
+                    time.sleep(2)
+                    i += 1
+                else:
+                    print("Wrong Captcha, try again..")
+                    self.wait_for_captcha()
+                    self.driver.find_element_by_xpath(roll_btn).click()
+                    time.sleep(2)
+                    i += 1
 
             else:
+                pass
 
-                self.wait_for_captcha()
-                try:
-                    self.wait_for_element('//*[@id="free_play_form_button"]', 10)
-                    self.driver.find_element_by_xpath('//*[@id="free_play_form_button"]').click()
-                    print("Succesfully Rolled.")
+            # See if modal popup appeared
+            if self.wait_for_element('//*[@id="myModal22"]', 4):
+                model_btn = self.driver.find_element_by_xpath('/html/body/div[11]/a')
+                self.driver.find_element_by_xpath(model_btn).click()
+            else:
+                pass
+            try:
 
-                except NoSuchElementException or TimeoutException:
-                    print("Roll Table Button not visible on page!")
+                if self.wait_for_element('//*[@id="free_play_digits"]', 5):
+                    time.sleep(1.5)
+                    i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
+                    ii = self.driver.find_element_by_xpath('//*[@id="free_play_second_digit"]').text
+                    iii = self.driver.find_element_by_xpath('//*[@id="free_play_third_digit"]').text
+                    iv = self.driver.find_element_by_xpath('//*[@id="free_play_fourth_digit"]').text
+                    v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
 
-                # See if modal popup appeared
-                if self.wait_for_element('//*[@id="myModal22"]', 4):
-                    self.driver.find_element_by_xpath('/html/body/div[11]/a').click()
+                    print("\nYou Got: {0} {1} {2} {3} {4}".format (i, ii, iii, iv, v))
                 else:
-                    pass
-                try:
-
-                    if self.wait_for_element('//*[@id="free_play_digits"]', 5):
-                        i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
-                        ii = self.driver.find_element_by_xpath('//*[@id="free_play_second_digit"]').text
-                        iii = self.driver.find_element_by_xpath('//*[@id="free_play_third_digit"]').text
-                        iv = self.driver.find_element_by_xpath('//*[@id="free_play_fourth_digit"]').text
-                        v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
-
-                        print("\nYou Got: %r %r %r %r %r") % (i, ii, iii, iv, v)
-                    else:
-                        print("Can't find reward!")
-                except:
-                    pass
+                    print("Can't find reward!")
+            except:
+                pass
 
         else:
             print("Can't Find Roll table!!")
@@ -203,6 +239,7 @@ def check_internet():
         pass
     return False
 
+
 def get_ip():
     i = 5
     j = 20
@@ -236,9 +273,21 @@ while True:
         print("Enter valid response!")
         continue
 
-connection_name = str(input("Enter the name of your Dial-up Connection: "))
+
+def modem_off(connection):
+    os.system("rasdial " + connection + " /disconnect")
+
+
+def modem_on(connection):
+    os.system("rasdial " + connection)
 
 if ip_method == 1:
+
+    connection_name = str(input("Enter the name of your Dial-up Connection: "))
+
+    if not check_internet():
+        modem_on(connection_name)
+
     def change_ip():
         while True:
             try:
@@ -248,7 +297,7 @@ if ip_method == 1:
                 time.sleep(3)
 
             except:
-                print("Can't interact with Phone, check usb connection!")
+                print("Can't reach modem, check connection.")
                 continue
             else:
                 break
@@ -270,14 +319,6 @@ else:
                 continue
             else:
                 break
-
-
-def modem_off(connection):
-    os.system("rasdial" + connection)
-
-
-def modem_on(connection):
-    os.system("rasdial" + connection + "/disconnect")
 
 
 def check_pikle(new_ac_list):
@@ -311,15 +352,16 @@ def main():
     ac_list = []
 
     for line in acc_file.readlines():
-        acname = line.split('@')[0]
-        ac_list.append(acname)
+        username = line.split('@')[0]
+        ac_list.append(username)
+        acc_file.close()
 
     if not os.path.isfile("dumps/accounts_map.hk"):
         print("No previous account dump detected creating fresh..")
         acc_time = {}
 
         for ac in ac_list:
-            acc_time[ac] = '%f' % 0.00
+            acc_time[ac] = 0.00
 
         pickle.dump(acc_time, open("dumps/accounts_map.hk", 'wb'))
         accounts_time = acc_time
@@ -339,51 +381,73 @@ def main():
             print("No new account found.")
         accounts_time = old_dict
 
-    HaxObject = HaxBitCoins()
-
     while True:
 
         for acc in accounts_time.keys():
 
+            print("Current account: ", acc)
+
             print("Your current IP Address is: %s" % get_ip())
 
             t1 = time.time()
-            t2 = float(accounts_time[acc])
-            time_left = t1 - t2
-            if time_left > 60*60 or time_left == t1:
+            t2 = accounts_time.get(acc)
+            time_been = t1 - float(t2)
+            if time_been > float(60*60) or time_been == t1:
 
-                time.sleep(4)
+                HaxObject = HaxBitCoins()
 
                 print("Opening url.")
-                HaxObject.load_url(captcha_page)
+                try:
+                    HaxObject.load_url(captcha_page)
+                except:
+                    print("Can't open url")
 
                 if os.path.isfile(dump_location + acc + ".hax"):
+                    print(acc)
                     print("Cookie file found for the account: " + acc + ".hax")
-                    print("\nRestoring previous cookie.")
                     HaxObject.load_session(dump_location + acc + ".hax")
+                    print("Previous session restored successfully")
+                    print("\nRefreshing page")
                     HaxObject.load_url(captcha_page)
                     time.sleep(4)
-                    HaxObject.roll_table()
+                    print("")
+
+                    while HaxObject.is_element_clickable('/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/div[2]/p[3]', 6)\
+                            or HaxObject.is_captcha():
+                        HaxObject.roll_table()
+                        time.sleep(4)
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.quit_fox()
                 else:
-                    HaxObject.login_homepage()
+                    print(acc)
+                    with open('accounts.txt', 'r') as f:
+                        for line in f:
+                            if acc in line:
+                                user = line.split(':')[0].strip()
+                                password = line.split(':')[1].strip()
+
+                    print(user, password)
+                    print("No previous cookie found for this account, trying to log in.")
+                    HaxObject.login_homepage(user, password)
                     time.sleep(4)
-                    HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.roll_table()
+                    print("Saving session to a cookie file.")
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.quit_fox()
 
                 counter += 1
+                accounts_time[acc] = time.time()
+                pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
+
+                print("Changing your IP before Next Roll")
+                change_ip()
+                time.sleep(4)
 
             else:
                 print("Waiting for Next challenge!")
-                time.sleep(10)
-                print("Time left: %s") % (str(time_left))
+                time.sleep(2)
+                print("Time left: %.2f minutes" % ((3600 - time_been) / 60))
 
-            print("Changing your IP before Next Roll")
-            change_ip()
-            time.time(4)
 
 if __name__ == '__main__':
     main()
