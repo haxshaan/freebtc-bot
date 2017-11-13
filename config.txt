@@ -1,0 +1,5 @@
+# Configuration file
+
+# 0d28g4ui4k
+
+Dial-up: CellOne

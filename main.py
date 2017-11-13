@@ -10,7 +10,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
+
 
 binary = FirefoxBinary(r"C:\Program Files\Mozilla Firefox\firefox.exe")
 captcha_page = "https://freebitco.in/"
@@ -20,6 +20,7 @@ dump_location = "dumps/cookies/"
 class HaxBitCoins(object):
 
     def __init__(self):
+
         self.driver = webdriver.Firefox(executable_path="drivers/geckodriver.exe", firefox_binary=binary)
 
     def is_element_exist(self, xpath):
@@ -32,7 +33,7 @@ class HaxBitCoins(object):
     def wait_for_element(self, xpath, t):
         try:
             WebDriverWait(self.driver, t).until(EC.presence_of_element_located((By.XPATH, xpath)))
-        except NoSuchElementException or TimeoutException:
+        except:
             return False
         return True
 
@@ -62,17 +63,12 @@ class HaxBitCoins(object):
         input("Press any Key to continue....")
 
     def load_url(self, url):
-        while True:
-            if check_internet():
-                self.driver.get(url)
-                break
-            else:
-                continue
+        self.driver.get(url)
 
     def login_homepage(self, user, passw):
 
         # Wait for Login Script to appear then click
-        if self.wait_for_element('/html/body/div[2]/div/nav/section/ul/li[10]/a', 10):
+        if self.wait_for_element('/html/body/div[2]/div/nav/section/ul/li[10]/a', 20):
             loginbtn = self.driver.find_element_by_xpath('/html/body/div[2]/div/nav/section/ul/li[10]/a')
             self.driver.execute_script("arguments[0].click();", loginbtn)
         else:
@@ -103,6 +99,15 @@ class HaxBitCoins(object):
             return False
         return True
 
+    def enter_captcha(self):
+        cap = input("Enter the captcha value: ")
+        try:
+            self.driver.find_element_by_xpath(
+                '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]').send_keys(str(cap))
+        except:
+            return False
+        return True
+
     def roll_table(self):
 
         print("Current Balance: ", self.driver.find_element_by_xpath('//*[@id="balance"]').text)
@@ -129,13 +134,33 @@ class HaxBitCoins(object):
 
                 if i == 1:
                     self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                    self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
-                    self.wait_for_captcha()
+                    try:
+                        if self.is_element_clickable('/html/body/div[1]/div/a[1]', 4):
+                            self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
+                    except:
+                        pass
+                    if self.wait_for_element(
+                            '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 3):
+                        if not self.enter_captcha():
+                            self.wait_for_captcha()
+                        else:
+                            pass
+
                     self.driver.find_element_by_xpath(roll_btn).click()
                     i += 1
                 else:
                     print("Wrong Captcha, try again..")
-                    self.wait_for_captcha()
+                    try:
+                        if self.is_element_clickable('/html/body/div[1]/div/a[1]', 4):
+                            self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
+                    except:
+                        pass
+                    if self.wait_for_element(
+                            '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 3):
+                        if not self.enter_captcha():
+                            self.wait_for_captcha()
+                        else:
+                            pass
                     self.driver.find_element_by_xpath(roll_btn).click()
                     i += 1
 
@@ -273,8 +298,12 @@ def modem_on(connection):
     os.system("rasdial " + connection)
 
 if ip_method == 1:
-
-    connection_name = str(input("Enter the name of your Dial-up Connection: "))
+    connection_name = ''
+    with open('config.txt', 'r') as f:
+        for line in f.readlines():
+            if 'Dial-up' in line:
+                connection_name += line.split(':')[1].strip(' ')
+                print(connection_name)
 
     if not check_internet():
         modem_on(connection_name)
@@ -378,12 +407,12 @@ def main():
 
             print("\nCurrent account: ", acc)
 
-            print("Your current IP Address is: %s" % get_ip())
-
             t1 = time.time()
             t2 = accounts_time.get(acc)
             time_been = t1 - float(t2)
             if time_been > float(60*60) or time_been == t1:
+
+                print("Your current IP Address is: %s" % get_ip())
 
                 HaxObject = HaxBitCoins()
 
@@ -396,22 +425,33 @@ def main():
                 if os.path.isfile(dump_location + acc + ".hax"):
                     print(acc)
                     print("Cookie file found for the account: " + acc + ".hax")
-                    HaxObject.load_session(dump_location + acc + ".hax")
-                    print("Previous session restored successfully")
-                    print("\nRefreshing page")
-                    HaxObject.load_url(captcha_page)
+                    try:
+                        HaxObject.load_session(dump_location + acc + ".hax")
+                        print("Previous session restored successfully")
+                        print("\nRefreshing page")
+                        HaxObject.load_url(captcha_page)
+                    except:
+                        print("Can't restore previous cookie, trying to login..")
+                        HaxObject.load_url(captcha_page)
+                        with open('accounts.txt', 'r') as f:
+                            for line in f:
+                                if acc in line:
+                                    user = line.split(':')[0].strip()
+                                    password = line.split(':')[1].strip()
+
+                        HaxObject.login_homepage(user, password)
+                        time.sleep(4)
+
                     HaxObject.roll_table()
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.quit_fox()
                 else:
-                    print(acc)
                     with open('accounts.txt', 'r') as f:
                         for line in f:
                             if acc in line:
                                 user = line.split(':')[0].strip()
                                 password = line.split(':')[1].strip()
 
-                    print(user, password)
                     print("No previous cookie found for this account, trying to log in.")
                     HaxObject.login_homepage(user, password)
                     time.sleep(4)
@@ -424,15 +464,15 @@ def main():
                 accounts_time[acc] = time.time()
                 pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
 
+                print("Accounts left:")
+
                 print("Changing your IP before Next Roll")
                 change_ip()
                 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
-                time.sleep(4)
 
             else:
-                print("Waiting for Next challenge!")
-                time.sleep(2)
                 print("Time left: %.2f minutes" % ((3600 - time_been) / 60))
+                print("Waiting for Next challenge!")
 
 
 if __name__ == '__main__':
