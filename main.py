@@ -10,6 +10,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 
 binary = FirefoxBinary(r"C:\Program Files\Mozilla Firefox\firefox.exe")
 captcha_page = "https://freebitco.in/"
@@ -90,8 +91,7 @@ class HaxBitCoins(object):
             except:
                 print("Can't login")
                 raise SystemExit(0)
-            else:
-                print("Can't find email field!")
+
         else:
             print("Login form not found in the page")
 
@@ -110,47 +110,38 @@ class HaxBitCoins(object):
         # Go to roll tab
 
         roll_tab = '/html/body/div[2]/div/nav/section/ul/li[2]/a'
-        if self.wait_for_element(roll_tab, 15):
-            self.driver.execute_script("arguments[0].click;", roll_tab)
-        else:
-            print("Can't see FreeBTC tab")
+
+        try:
+            if self.wait_for_element(roll_tab, 3):
+                self.driver.execute_script("arguments[0].click;", roll_tab)
+        except:
+            pass
 
         # Wait for roll table
 
-        if self.wait_for_element('//*[@id="free_play_payout_table"]', 7):
+        if self.wait_for_element('//*[@id="free_play_payout_table"]', 5):
             roll_btn = '//*[@id="free_play_form_button"]'
-            self.driver.execute_script('arguments[0].scrollIntoView;', roll_btn)
 
             # Check if Roll available:
 
             i = 1
-            while self.is_element_clickable(roll_btn, 6):
+            while self.is_element_clickable(roll_btn, 4):
 
                 if i == 1:
+                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
                     self.wait_for_captcha()
                     self.driver.find_element_by_xpath(roll_btn).click()
-                    time.sleep(2)
                     i += 1
                 else:
                     print("Wrong Captcha, try again..")
                     self.wait_for_captcha()
                     self.driver.find_element_by_xpath(roll_btn).click()
-                    time.sleep(2)
                     i += 1
 
-            else:
-                pass
-
-            # See if modal popup appeared
-            if self.wait_for_element('//*[@id="myModal22"]', 4):
-                model_btn = self.driver.find_element_by_xpath('/html/body/div[11]/a')
-                self.driver.find_element_by_xpath(model_btn).click()
-            else:
-                pass
             try:
 
-                if self.wait_for_element('//*[@id="free_play_digits"]', 5):
-                    time.sleep(1.5)
+                if self.wait_for_element('//*[@id="free_play_digits"]', 2):
                     i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
                     ii = self.driver.find_element_by_xpath('//*[@id="free_play_second_digit"]').text
                     iii = self.driver.find_element_by_xpath('//*[@id="free_play_third_digit"]').text
@@ -385,7 +376,7 @@ def main():
 
         for acc in accounts_time.keys():
 
-            print("Current account: ", acc)
+            print("\nCurrent account: ", acc)
 
             print("Your current IP Address is: %s" % get_ip())
 
@@ -409,13 +400,7 @@ def main():
                     print("Previous session restored successfully")
                     print("\nRefreshing page")
                     HaxObject.load_url(captcha_page)
-                    time.sleep(4)
-                    print("")
-
-                    while HaxObject.is_element_clickable('/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/div[2]/p[3]', 6)\
-                            or HaxObject.is_captcha():
-                        HaxObject.roll_table()
-                        time.sleep(4)
+                    HaxObject.roll_table()
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.quit_fox()
                 else:
@@ -441,6 +426,7 @@ def main():
 
                 print("Changing your IP before Next Roll")
                 change_ip()
+                print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
                 time.sleep(4)
 
             else:
