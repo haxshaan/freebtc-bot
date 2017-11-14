@@ -3,14 +3,21 @@ import pickle
 import time
 import socket
 import requests
+import pyautogui
+from PIL import Image
+
 
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import *
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
+from captcha2upload import CaptchaUpload
 
 binary = FirefoxBinary(r"C:\Program Files\Mozilla Firefox\firefox.exe")
 captcha_page = "https://freebitco.in/"
@@ -20,8 +27,15 @@ dump_location = "dumps/cookies/"
 class HaxBitCoins(object):
 
     def __init__(self):
-
-        self.driver = webdriver.Firefox(executable_path="drivers/geckodriver.exe", firefox_binary=binary)
+        profile = FirefoxProfile()
+        profile.set_preference("browser.download.dir", r"C:\Users\Home\PycharmProjects\freebitcoin\dumps\captcha")
+        profile.set_preference("browser.download.folderList", 2)
+        profile.set_preference("browser.download.manager.showWhenStarting", False)
+        profile.set_preference("browser,helperapps.neverAsk.SaveToDisk", "image/png")
+        self.driver = webdriver.Firefox(executable_path="drivers/geckodriver.exe", firefox_binary=binary,
+                                        firefox_profile=profile)
+        self.TWOCAPTCHA_API_KEY = "fbce4d59de16ac4995cbcb6f65f18a37"
+        self.captcha = CaptchaUpload(self.TWOCAPTCHA_API_KEY)
 
     def is_element_exist(self, xpath):
         try:
@@ -61,6 +75,30 @@ class HaxBitCoins(object):
     def wait_for_captcha(self):
 
         input("Press any Key to continue....")
+
+    def two_captcha(self):
+
+        path = "dumps/captcha/captcha.png"
+        # WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+            # (By.XPATH, '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/div[1]/img')))
+        image_src = self.driver.find_element_by_xpath(
+            '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/div[1]/img')
+
+        location = image_src.location
+        size = image_src.size
+        # save ss
+        self.driver.save_screenshot(path)
+
+        # Open image into memory using PIL
+        image = Image.open(path)
+
+        left = location['x']
+        top = location['y'] + 140
+        right = location['x'] + size['width']
+        bottom = location['y'] + size['height'] + 140
+
+        image = image.crop((left, top, right, bottom))  # defines crop
+        image.save(path, "png")
 
     def load_url(self, url):
         self.driver.get(url)
@@ -102,15 +140,16 @@ class HaxBitCoins(object):
     def enter_captcha(self):
         cap = input("Enter the captcha value: ")
         try:
-            self.driver.find_element_by_xpath(
-                '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]').send_keys(str(cap))
+            self.driver.find_element_by_xpath('/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]').send_keys(str(cap))
         except:
             return False
         return True
 
     def roll_table(self):
-
-        print("Current Balance: ", self.driver.find_element_by_xpath('//*[@id="balance"]').text)
+        try:
+            print("Current Balance: ", self.driver.find_element_by_xpath('//*[@id="balance"]').text)
+        except:
+            pass
 
         # Go to roll tab
 
@@ -131,38 +170,94 @@ class HaxBitCoins(object):
 
             i = 1
             while self.is_element_clickable(roll_btn, 4):
+                print("test, i is: ", i)
 
                 if i == 1:
                     self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     try:
-                        if self.is_element_clickable('/html/body/div[1]/div/a[1]', 4):
+                        j = 4
+                        while not self.is_element_clickable('/html/body/div[1]/div/a[1]', 1) and j:
+                            j -= 1
+                            continue
+                        else:
                             self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
                     except:
                         pass
-                    if self.wait_for_element(
-                            '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 3):
-                        if not self.enter_captcha():
-                            self.wait_for_captcha()
-                        else:
-                            pass
 
-                    self.driver.find_element_by_xpath(roll_btn).click()
-                    i += 1
+                    if self.wait_for_element('/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 6):
+                        self.two_captcha()
+                        #value = self.captcha.solve('dumps/captcha/cap_file.png')
+                        #print(value)
+                        #print(self.captcha.getbalance())
+
+                        if self.enter_captcha():
+                            self.driver.find_element_by_xpath(roll_btn).click()
+                            i += 1
+                        else:
+                            # If can't submit value
+                            try:
+                                captcha_field = self.driver.find_element_by_xpath(
+                                    '/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]')
+                                self.driver.execute_script("arguments[0].click();", captcha_field)
+                            except:
+                                pass
+                            self.wait_for_captcha()
+                            self.driver.find_element_by_xpath(roll_btn).click()
+                            i += 1
+                    else:
+                        print("Can't find captcha field,\nPlease fill the captcha in the browser and Press enter here!")
+                        try:
+                            captcha_field = self.driver.find_element_by_xpath(
+                                '/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]')
+                            self.driver.execute_script("arguments[0].click();", captcha_field)
+                        except:
+                            pass
+                        self.wait_for_captcha()
+                        self.driver.find_element_by_xpath(roll_btn).click()
+                        i += 1
+
                 else:
                     print("Wrong Captcha, try again..")
                     try:
-                        if self.is_element_clickable('/html/body/div[1]/div/a[1]', 4):
+                        j = 3
+                        while not self.is_element_clickable('/html/body/div[1]/div/a[1]', 1) and j:
+                            j -= 1
+                            continue
+                        else:
+                            print("Closing TnC footer")
                             self.driver.find_element_by_xpath('/html/body/div[1]/div/a[1]').click()
                     except:
                         pass
-                    if self.wait_for_element(
-                            '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 3):
-                        if not self.enter_captcha():
-                            self.wait_for_captcha()
+
+                    if self.wait_for_element('/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]', 6):
+                        self.two_captcha()
+                        if self.enter_captcha():
+                            self.driver.find_element_by_xpath(roll_btn).click()
+                            i += 1
                         else:
+                            # If can't submit value, may never run
+                            try:
+                                captcha_field = self.driver.find_element_by_xpath('/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]')
+                                self.driver.execute_script("arguments[0].click();", captcha_field)
+                            except:
+                                pass
+                            print("Can't find captcha field,\n"
+                                  "Please fill the captcha in the browser and Press enter here!")
+                            self.wait_for_captcha()
+                            self.driver.find_element_by_xpath(roll_btn).click()
+                            i += 1
+                    else:
+                        try:
+                            captcha_field = self.driver.find_element_by_xpath(
+                                '/html/body/div[3]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]')
+                            self.driver.execute_script("arguments[0].click();", captcha_field)
+                        except:
                             pass
-                    self.driver.find_element_by_xpath(roll_btn).click()
-                    i += 1
+                        print("Can't find captcha field,\n"
+                              "Please fill the captcha in the browser and Press enter here!")
+                        self.wait_for_captcha()
+                        self.driver.find_element_by_xpath(roll_btn).click()
+                        i += 1
 
             try:
 
