@@ -241,10 +241,17 @@ class HaxBitCoins(object):
                         if os.path.isfile(captcha_path):
                             input("Continue?")
                             print("Getting captcha answer..")
-                            ti = time.time()
-                            value = self.captcha.solve(captcha_path)
-                            print("Captcha answer is: ", str(value))
-                            tf = time.time()
+                            while True:
+                                ti = time.time()
+                                value = self.captcha.solve(captcha_path)
+                                print("Captcha answer received is: ", str(value))
+                                tf = time.time()
+                                if value == 1:
+                                    print("Received Error from 2captcha, trying again.")
+                                    continue
+                                else:
+                                    break
+
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
                             try:
                                 self.driver.find_element_by_css_selector('.captchasnet_captcha_input_box').send_keys(value)
@@ -268,17 +275,22 @@ class HaxBitCoins(object):
                             i += 1
 
                     else:
-                        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                         print("Can't find captcha input box,\nPlease input value in the browser and Press enter here!")
-                        print("Getting captcha src attribute and saving image")
-                        self.get_captcha_image()
+                        print("Getting captcha image src attribute and saving it")
+                        self.get_captcha2()
                         if os.path.isfile(captcha_path):
                             input("Continue?")
                             print("Getting captcha answer..")
-                            ti = time.time()
-                            value = self.captcha.solve(captcha_path)
-                            print("Captcha answer is: ", str(value))
-                            tf = time.time()
+                            while True:
+                                ti = time.time()
+                                value = self.captcha.solve(captcha_path)
+                                print("Captcha answer received is: ", str(value))
+                                tf = time.time()
+                                if value == 1:
+                                    print("Received Error from 2captcha, trying again.")
+                                    continue
+                                else:
+                                    break
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
                         else:
                             print("Can't find captcha image")
@@ -298,10 +310,16 @@ class HaxBitCoins(object):
                         if os.path.isfile(captcha_path):
                             input("Continue?")
                             print("Getting captcha answer..")
-                            ti = time.time()
-                            value = self.captcha.solve(captcha_path)
-                            print("Captcha answer is: ", str(value))
-                            tf = time.time()
+                            while True:
+                                ti = time.time()
+                                value = self.captcha.solve(captcha_path)
+                                print("Captcha answer is: ", str(value))
+                                tf = time.time()
+                                if value == 1:
+                                    print("Received Error from 2captcha, trying again.")
+                                    continue
+                                else:
+                                    break
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
                             try:
                                 self.driver.find_element_by_css_selector('.captchasnet_captcha_input_box').send_keys(
@@ -320,7 +338,7 @@ class HaxBitCoins(object):
                             print("Can't find captcha image")
 
                     else:
-                        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        #self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                         print("Can't find captcha input box,\nPlease input value in the browser and Press enter here!")
                         try:
                             action = ActionChains(self.driver)
@@ -329,14 +347,20 @@ class HaxBitCoins(object):
                         except:
                             pass
                         print("Getting captcha src attribute and saving image")
-                        self.get_captcha_image()
+                        self.get_captcha2()
                         if os.path.isfile(captcha_path):
                             input("Continue?")
                             print("Getting captcha answer..")
-                            ti = time.time()
-                            value = self.captcha.solve(captcha_path)
-                            print("Captcha answer is: ", str(value))
-                            tf = time.time()
+                            while True:
+                                ti = time.time()
+                                value = self.captcha.solve(captcha_path)
+                                print("Captcha answer is: ", str(value))
+                                tf = time.time()
+                                if value == 1:
+                                    print("Received Error from 2captcha, trying again.")
+                                    continue
+                                else:
+                                    break
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
                         else:
                             print("Can't find captcha image")
