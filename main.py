@@ -4,8 +4,9 @@ import time
 import socket
 import requests
 from PIL import Image
-from io import BytesIO, StringIO
+from io import BytesIO
 import base64
+import logging
 
 
 from selenium import webdriver
@@ -17,11 +18,25 @@ from selenium.common.exceptions import *
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.common.action_chains import ActionChains
 
-from captcha2upload import CaptchaUpload
+from haxCaptcha.HaxCaptcha import CaptchaUpload
 
-binary = FirefoxBinary(r"C:\Program Files\Mozilla Firefox\firefox.exe")
+
 captcha_page = "https://freebitco.in/"
 dump_location = "dumps/cookies/"
+
+connection_name, bin_loc = '', 'C:\\Program Files\\Mozilla Firefox\\firefox.exe'
+
+with open('config.txt', 'r') as f:
+    for line in f.readlines():
+        if 'Dial-up' in line:
+            connection_name += line.split(':')[1].strip(' ')
+            print(connection_name)
+           
+binary = FirefoxBinary(bin_loc)
+
+# Keep log of errors
+logging.basicConfig(level=logging.INFO)
+haxlog = logging.getLogger(__name__)
 
 
 def timeit(method):
@@ -47,7 +62,7 @@ class HaxBitCoins(object):
         self.driver = webdriver.Firefox(executable_path="drivers/geckodriver.exe", firefox_binary=binary,
                                         firefox_profile=profile)
         self.TWOCAPTCHA_API_KEY = "fbce4d59de16ac4995cbcb6f65f18a37"
-        self.captcha = CaptchaUpload(self.TWOCAPTCHA_API_KEY, log=True)
+        self.captcha = CaptchaUpload(self.TWOCAPTCHA_API_KEY, log=haxlog)
 
     def is_element_exist(self, xpath):
         try:
@@ -94,9 +109,15 @@ class HaxBitCoins(object):
         element = self.driver.find_element_by_css_selector('.captchasnet_captcha_content > img:nth-child(1)')
 
         location = element.location_once_scrolled_into_view
+        try:
+            action = ActionChains(self.driver)
+            action.move_to_element(element).perform()
+        except:
+            print("Action move to didn't work")
+
         size = element.size
 
-        print(location, size)
+        #print(location, size)
 
         ss = self.driver.get_screenshot_as_base64()
         b64_img = base64.b64decode(ss)
@@ -108,7 +129,7 @@ class HaxBitCoins(object):
         right = location['x'] + size['width']
         bottom = location['y'] + size['height']
 
-        print(left, top, right, bottom)
+        #print(left, top, right, bottom)
 
         image = image.crop((left, top, right, bottom))
         image.save(path, 'png')
@@ -215,7 +236,6 @@ class HaxBitCoins(object):
 
             i = 1
             while self.is_element_clickable(roll_btn, 4):
-                print("test, i is: ", i)
 
                 if i == 1:
                     #self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -238,9 +258,10 @@ class HaxBitCoins(object):
                     if self.wait_by_css('.captchasnet_captcha_input_box', 10):
                         print("Getting captcha src attribute and saving image")
                         self.get_captcha2()
+
                         if os.path.isfile(captcha_path):
-                            input("Continue?")
-                            print("Getting captcha answer..")
+                            #input("Continue?")
+                            print("\nGetting captcha answer..")
                             while True:
                                 ti = time.time()
                                 value = self.captcha.solve(captcha_path)
@@ -279,7 +300,7 @@ class HaxBitCoins(object):
                         print("Getting captcha image src attribute and saving it")
                         self.get_captcha2()
                         if os.path.isfile(captcha_path):
-                            input("Continue?")
+                            #input("Continue?")
                             print("Getting captcha answer..")
                             while True:
                                 ti = time.time()
@@ -300,15 +321,14 @@ class HaxBitCoins(object):
 
                 else:
                     print("Wrong Captcha, try again..")
-
-                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
+                    #self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     print("Trying to get the Captcha input box\n")
                     if self.wait_by_css('.captchasnet_captcha_input_box', 10):
                         print("Getting New captcha src attribute and saving image")
-                        self.get_captcha_image()
+                        time.sleep(1)
+                        self.get_captcha2()
                         if os.path.isfile(captcha_path):
-                            input("Continue?")
+                            #input("Continue?")
                             print("Getting captcha answer..")
                             while True:
                                 ti = time.time()
@@ -349,7 +369,7 @@ class HaxBitCoins(object):
                         print("Getting captcha src attribute and saving image")
                         self.get_captcha2()
                         if os.path.isfile(captcha_path):
-                            input("Continue?")
+                            #input("Continue?")
                             print("Getting captcha answer..")
                             while True:
                                 ti = time.time()
@@ -501,12 +521,6 @@ def modem_on(connection):
     os.system("rasdial " + connection)
 
 if ip_method == 1:
-    connection_name = ''
-    with open('config.txt', 'r') as f:
-        for line in f.readlines():
-            if 'Dial-up' in line:
-                connection_name += line.split(':')[1].strip(' ')
-                print(connection_name)
 
     if not check_internet():
         modem_on(connection_name)
@@ -626,8 +640,7 @@ def main():
                     print("Can't open url")
 
                 if os.path.isfile(dump_location + acc + ".hax"):
-                    print(acc)
-                    print("Cookie file found for the account: " + acc + ".hax")
+                    print("\nCookie file found for the account: " + acc + ".hax")
                     try:
                         HaxObject.load_session(dump_location + acc + ".hax")
                         print("Previous session restored successfully")
@@ -666,8 +679,6 @@ def main():
                 counter += 1
                 accounts_time[acc] = time.time()
                 pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
-
-                print("Accounts left:")
 
                 print("Changing your IP before Next Roll")
                 change_ip()
