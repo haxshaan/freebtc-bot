@@ -1,5 +1,11 @@
-# Configuration file
+# -- Configuration file for HaxBTC Bot -- #
 
-# 0d28g4ui4k
+# Your Random key: 0d28g4ui4k
 
 Dial-up: CellOne
+
+Firefox_Binary : C:\Program Files\Mozilla Firefox\firefox.exe
+
+Chrome path : C:\Program Files (x86)\Google\Chrome\Application\chrome.exe
+
+2captcha API Key: fbce4d59de16ac4995cbcb6f65f18a37
