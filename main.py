@@ -266,7 +266,7 @@ class HaxBitCoins(object):
             return False
         return True
 
-    def get_score(self, captcha_path):
+    def get_score(self):
         try:
             if self.wait_for_element('//*[@id="free_play_digits"]', 2):
                 i = self.driver.find_element_by_xpath('//*[@id="free_play_first_digit"]').text
@@ -276,11 +276,10 @@ class HaxBitCoins(object):
                 v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
 
                 print("\nYou Got: |{0}|{1}|{2}|{3}|{4}|".format(i, ii, iii, iv, v))
-                os.remove(captcha_path)
             else:
                 print("\nCan't find reward!")
         except Exception as e:
-            print("\nAn exception occured: ", e)
+            print("\nAn exception occurred: ", e)
             pass
 
     def is_visible_xpath(self, xpath, t1):
@@ -362,7 +361,7 @@ class HaxBitCoins(object):
                         self.close_tnc()
 
                         if os.path.isfile(captcha_path):
-                            #input("\nPress Enter to continue!")
+                            # input("\nPress Enter to continue!")
                             print("\n>> Requesting answer from 2captcha..")
 
                             while True:
@@ -392,9 +391,12 @@ class HaxBitCoins(object):
 
                             self.driver.find_element_by_xpath(roll_btn).click()
                             i += 1
-                            print("Your 2captcha balance is: ", self.captcha.getbalance())
+                            try:
+                                print("Your 2captcha balance is: ", self.captcha.getbalance())
+                            except TimeoutException:
+                                pass
                             time.sleep(1.5)
-                            self.get_score(captcha_path)
+                            self.get_score()
                         else:
                             print("Can't find captcha image")
                             if self.enter_captcha():
@@ -403,7 +405,7 @@ class HaxBitCoins(object):
                                 input("Press Enter to continue....")
                             self.driver.find_element_by_xpath(roll_btn).click()
                             time.sleep(1.5)
-                            self.get_score(captcha_path)
+                            self.get_score()
                             i += 1
 
                     else:
@@ -414,7 +416,7 @@ class HaxBitCoins(object):
                         self.close_tnc()
 
                         if os.path.isfile(captcha_path):
-                            #input("\nPress Enter to continue! ")
+                            # input("\nPress Enter to continue! ")
                             print("\n>> Requesting answer from 2captcha..")
                             while True:
                                 ti = time.time()
@@ -435,7 +437,11 @@ class HaxBitCoins(object):
                         input("Press Enter to continue....")
                         self.driver.find_element_by_xpath(roll_btn).click()
                         time.sleep(1.5)
-                        self.get_score(captcha_path)
+                        try:
+                            print("Your 2captcha balance is: ", self.captcha.getbalance())
+                        except TimeoutException:
+                            pass
+                        self.get_score()
                         i += 1
 
                 else:
@@ -448,16 +454,20 @@ class HaxBitCoins(object):
                         self.get_captcha2()
 
                         if self.is_visible_css_selector('#free_play_error', 1.5):
-                            print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!\nPlease Verify you account!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+                            if 'Captcha is incorrect or has expired' not in self.driver.find_element_by_css_selector(
+                                    '#free_play_error').text:
+                                print("""!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                      Please Verify you account!!
+                                      !!!!!!!!!!!!!!!!!!!!!!!!!!!""")
+                                return 3
 
-                            return 3
                         else:
                             pass
 
                         self.close_tnc()
 
                         if os.path.isfile(captcha_path):
-                            #input("\nPress Enter to continue! ")
+                            # input("\nPress Enter to continue! ")
                             print("\n>> Requesting answer from 2captcha..")
                             while True:
                                 ti = time.time()
@@ -490,8 +500,11 @@ class HaxBitCoins(object):
 
                         self.driver.find_element_by_xpath(roll_btn).click()
                         i += 1
-                        print("Your account balance is: ", self.captcha.getbalance())
-                        self.get_score(captcha_path)
+                        try:
+                            print("Your 2captcha balance is: ", self.captcha.getbalance())
+                        except TimeoutException:
+                            pass
+                        self.get_score()
 
                     else:
                         self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -506,7 +519,7 @@ class HaxBitCoins(object):
                         print("\n>> Getting captcha src attribute and saving image")
                         self.get_captcha2()
                         if os.path.isfile(captcha_path):
-                            #input("\nPress Enter to continue!")
+                            # input("\nPress Enter to continue!")
                             print("\n>> Requesting answer from 2captcha..")
                             while True:
                                 ti = time.time()
@@ -522,13 +535,12 @@ class HaxBitCoins(object):
                                     break
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
 
-
                         else:
                             print("Can't find captcha image")
                         input("Press Enter to continue....")
                         self.driver.find_element_by_xpath(roll_btn).click()
                         time.sleep(1.5)
-                        self.get_score(captcha_path)
+                        self.get_score()
                         i += 1
 
         else:
@@ -668,12 +680,12 @@ if ip_method == 1:
             try:
                 modem_off(connection_name)
                 time.sleep(1)
-                print(" ")
+
                 modem_on(connection_name)
                 time.sleep(3)
 
             except Exception as e:
-                print("\nAn exception occured: ", e)
+                print("\nAn exception occurred: ", e)
                 print("Can't reach modem, check connection.")
                 continue
             else:
@@ -717,17 +729,17 @@ def check_pikle(new_ac_list):
 def main():
     counter = 0
 
-    print("\nChecking accounts file for new accounts...")
+    print("\n>> Checking accounts file for new accounts...")
 
     try:
         acc_file = open("accounts.txt", "r")
     except Exception as e:
         print("\nAn exception occured: ", e)
-        print(">> Accounts.txt file not found. Refer documentation!")
+        print("!!!! - Accounts.txt file not found. Refer documentation -!!!!")
         raise SystemExit(0)
 
     if os.path.getsize("accounts.txt") == 0:
-        print(">> Account file is empty!")
+        print("!!!! - Account file is empty - !!!!")
         raise SystemExit(0)
 
     ac_list = []
@@ -748,6 +760,7 @@ def main():
         accounts_time = acc_time
 
     else:
+        print("\n>> Previous accounts dump found.")
         old_dict = pickle.load(open("dumps/accounts_map.hk", "rb"))
         new_accounts = check_pikle(ac_list)
         if len(new_accounts):
@@ -755,13 +768,15 @@ def main():
                 old_dict.update({item: 0.00})
 
             pickle.dump(old_dict, open("dumps/accounts_map.hk", "wb"))
-            print(">> Found new accounts, adding them to dump database")
+            print("- Found new accounts, adding them to dump database")
         else:
-            print(">> No new account found.")
+            print("- No new account found.")
         accounts_time = old_dict
-        print("\n>> Previous accounts dump found.")
 
     while True:
+
+        while not check_internet():
+            change_ip()
 
         for acc in accounts_time.keys():
 
@@ -776,7 +791,8 @@ def main():
                 if counter:
                     while ip_now == ips[-1]:
                         print("IP not changed, trying to change.")
-                        change_ip()
+                        while not check_internet():
+                            change_ip()
                 print("Your current IP Address: %s" % ip_now)
                 if counter:
                     print("Last IP Address: {0}".format(ips[-1]))
@@ -823,6 +839,9 @@ def main():
                             verify_ac.write(acc + "\n")
                     elif HaxObject.roll_table() == 2:
                         print("Error: Too many Captcha attemps.")
+                    else:
+                        accounts_time[acc] = time.time()
+                        pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
 
                     print("\nSaving current session cookies.")
                     HaxObject.save_session(dump_location + acc + ".hax")
@@ -837,18 +856,24 @@ def main():
                     print("No Cookie found for this account, Trying to Log in.")
                     HaxObject.login_homepage(user, password)
                     time.sleep(4)
-                    if not HaxObject.roll_table():
-                        print("There was a Problem in this account!")
+                    if HaxObject.roll_table() == 3:
+                        print("Check verify_accounts.txt file")
+                        with open("verify_accounts.txt", "w") as verify_ac:
+                            verify_ac.write(acc + "\n")
+                    elif HaxObject.roll_table() == 2:
+                        print("Error: Too many Captcha attemps.")
+                    else:
+                        accounts_time[acc] = time.time()
+                        pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
                     print("Saving current session cookies.")
                     HaxObject.save_session(dump_location + acc + ".hax")
                     HaxObject.quit_fox()
 
                 counter += 1
-                accounts_time[acc] = time.time()
-                pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
 
                 print("\nChanging your IP before Next Roll\n")
-                change_ip()
+                while not check_internet():
+                    change_ip()
                 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 
             else:
