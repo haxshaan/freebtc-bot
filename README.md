@@ -16,3 +16,5 @@ A automated bot which earns btc.
  account@email.com : password
  * Rename the config.txt with your Modem dialup connection name, browser binary location, 2captcha api.
  * Run the main.py
+
+# Note: Every time you create a new account, add it to end of accounts.txt file. Bot will automatically add the account to the database.
