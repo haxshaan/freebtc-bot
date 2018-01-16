@@ -7,6 +7,7 @@ from PIL import Image
 from io import BytesIO
 import base64
 import logging
+import subprocess
 
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
@@ -109,7 +110,7 @@ class HaxBitCoins(object):
             opt.binary_location = chrome_bin
             self.driver = webdriver.Chrome(executable_path="drivers/chromedriver.exe", chrome_options=opt)
 
-        self.captcha = CaptchaUpload(api_2, waittime=10, log=haxlog)
+        self.captcha = CaptchaUpload(api_2, waittime=10, log=haxlog, counter=50)
 
     def is_element_exist(self, xpath):
         try:
@@ -122,7 +123,7 @@ class HaxBitCoins(object):
         try:
             WebDriverWait(self.driver, t).until(EC.presence_of_element_located((By.XPATH, xpath)))
         except Exception as e:
-            print("An exception occured: ", e)
+            print("An exception occured while waiting for element: ", e)
             return False
         return True
 
@@ -150,7 +151,19 @@ class HaxBitCoins(object):
     def get_captcha2(self):
         path = "dumps/captcha/captcha.png"
 
-        element = self.driver.find_element_by_css_selector('.captchasnet_captcha_content > img:nth-child(1)')
+        i = 5
+        while not self.is_visible_css_selector('.captchasnet_captcha_content > img:nth-child(1)', 5):
+            if i == 3:
+                self.driver.refresh()
+                i -= 1
+                continue
+            elif not i:
+                return 1
+            else:
+                i -= 1
+                continue
+        else:
+            element = self.driver.find_element_by_css_selector('.captchasnet_captcha_content > img:nth-child(1)')
 
         location = element.location_once_scrolled_into_view
         try:
@@ -203,7 +216,7 @@ class HaxBitCoins(object):
         image.save(path, "png")
 
     def load_url(self, url):
-        header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+        """header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                 'Chrome/62.0.3202.94 Safari/537.36'}
 
         i = 5
@@ -219,6 +232,11 @@ class HaxBitCoins(object):
                 print("Trying again..")
                 i -= 1
                 continue
+                """
+        while not check_internet():
+            change_ip()
+        else:
+            self.driver.get(url)
 
     def login_homepage(self, user, passw):
 
@@ -240,7 +258,7 @@ class HaxBitCoins(object):
                 self.driver.find_element_by_xpath('//*[@id="login_button"]').click()
                 time.sleep(2)
             except Exception as e:
-                print("\nAn exception occured: ", e)
+                print("\nAn exception occurred while filling login data: ", e)
                 print("Can't login")
                 raise SystemExit(0)
 
@@ -251,8 +269,8 @@ class HaxBitCoins(object):
         try:
             WebDriverWait(self.driver, time1).until(
                 EC.element_to_be_clickable((By.XPATH, xpath)))
-        except Exception as e:
-            print("\nAn exception occured: ", e)
+        except:
+            # print("\nAn exception occurred while waiting to be clickable: ", e)
             return False
         return True
 
@@ -262,7 +280,7 @@ class HaxBitCoins(object):
             self.driver.find_element_by_xpath(
                 '/html/body/div[2]/div/div[1]/div[5]/div[4]/div/div/div/div/div/input[2]').send_keys(str(cap))
         except Exception as e:
-            print("\nAn exception occured: ", e)
+            print("\nAn exception occured while sending manual captcha answer: ", e)
             return False
         return True
 
@@ -276,10 +294,11 @@ class HaxBitCoins(object):
                 v = self.driver.find_element_by_xpath('//*[@id="free_play_fifth_digit"]').text
 
                 print("\nYou Got: |{0}|{1}|{2}|{3}|{4}|".format(i, ii, iii, iv, v))
+                # os.remove(captcha_path)
             else:
                 print("\nCan't find reward!")
         except Exception as e:
-            print("\nAn exception occurred: ", e)
+            print("\nAn exception occured in score feature: ", e)
             pass
 
     def is_visible_xpath(self, xpath, t1):
@@ -316,7 +335,7 @@ class HaxBitCoins(object):
         try:
             WebDriverWait(self.driver, time1).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         except Exception as e:
-            print("\nAn exception occured: ", e)
+            print("\nAn exception occurred while waiting for selector: ", e)
             return False
         return True
 
@@ -334,7 +353,7 @@ class HaxBitCoins(object):
         captcha_path = 'dumps/captcha/captcha.png'
 
         try:
-            if self.is_visible_xpath(roll_tab, 3):
+            if self.is_visible_xpath(roll_tab, 1):
                 self.driver.execute_script("arguments[0].click;", roll_tab)
         except Exception as e:
             print("\nException in finding Freebtc Tab: ", e)
@@ -357,23 +376,62 @@ class HaxBitCoins(object):
 
                     if self.wait_by_css('.captchasnet_captcha_input_box', 10):
                         print("\nCapturing Captcha image using Dynamic src attribute.")
-                        self.get_captcha2()
+
+                        if self.get_captcha2() == 1:
+                            return 4
+                        else:
+                            pass
                         self.close_tnc()
 
                         if os.path.isfile(captcha_path):
                             # input("\nPress Enter to continue!")
-                            print("\n>> Requesting answer from 2captcha..")
+                            print("\n>> Requesting answer from 2captcha..\n")
 
                             while True:
                                 ti = time.time()
-                                value = self.captcha.solve(captcha_path)
+
+                                rep = 5
+                                while True:
+                                    if not rep:
+                                        if not check_internet():
+                                            change_ip()
+                                            rep += 2
+                                        else:
+                                            rep += 2
+                                        continue
+                                    else:
+                                        try:
+                                            value = self.captcha.solve(captcha_path)
+                                        except:
+                                            print("There is a problem in getting answer, trying again.")
+                                            rep -= 1
+                                            continue
+                                        break
+
                                 print("Captcha answer received is: ", str(value))
+
                                 tf = time.time()
                                 if value == 1:
-                                    print("Received Error from 2captcha, trying again.")
+                                    print("Can't solve captcha, getting new image.")
+                                    try:
+                                        refresh_captcha = self.driver.find_element_by_css_selector(
+                                            'p.captchasnet_captcha_change_p:nth-child(3)')
+                                        self.driver.execute_script("arguments[0].click();", refresh_captcha)
+                                        time.sleep(3)
+                                    except:
+                                        print("Can't click refresh button")
                                     continue
+
                                 elif value == 2:
-                                    return True
+                                    try:
+                                        refresh_captcha = self.driver.find_element_by_css_selector(
+                                            'p.captchasnet_captcha_change_p:nth-child(3)')
+                                        self.driver.execute_script("arguments[0].click();", refresh_captcha)
+                                        time.sleep(3)
+                                    except:
+                                        print("Can't click refresh button")
+                                    continue
+
                                 else:
                                     break
 
@@ -382,7 +440,7 @@ class HaxBitCoins(object):
                                 self.driver.find_element_by_css_selector('.captchasnet_captcha_input_box').send_keys(
                                     value)
                             except Exception as e:
-                                print("\nAn exception occured: ", e)
+                                print("\nAn exception occured while sending captcha key: ", e)
                                 print("Can't input value into box, Enter it manually..")
                                 if self.enter_captcha():
                                     i += 1
@@ -411,16 +469,35 @@ class HaxBitCoins(object):
                     else:
                         print("Can't find captcha input box, Please input value in the browser and Press enter here!")
                         print("\nCapturing Captcha image using Dynamic src attribute.")
-                        self.get_captcha2()
+                        if self.get_captcha2() == 1:
+                            return 4
+                        else:
+                            pass
 
                         self.close_tnc()
 
                         if os.path.isfile(captcha_path):
                             # input("\nPress Enter to continue! ")
-                            print("\n>> Requesting answer from 2captcha..")
+                            print("\n>> Requesting answer from 2captcha..\n")
                             while True:
                                 ti = time.time()
-                                value = self.captcha.solve(captcha_path)
+                                rep = 5
+                                while True:
+                                    if not rep:
+                                        if not check_internet():
+                                            change_ip()
+                                            rep += 2
+                                        else:
+                                            rep += 2
+                                        continue
+                                    else:
+                                        try:
+                                            value = self.captcha.solve(captcha_path)
+                                        except:
+                                            print("There is a problem in getting answer, trying again.")
+                                            rep -= 1
+                                            continue
+                                        break
                                 print("\nCaptcha answer received is: ", str(value))
                                 tf = time.time()
                                 if value == 1:
@@ -445,20 +522,27 @@ class HaxBitCoins(object):
                         i += 1
 
                 else:
-                    print("Wrong Captcha, try again..")
+                    print("\nWrong Captcha, try again..")
+                    self.captcha.refund()
+
                     self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     print("\nTrying to get the Captcha input box.")
                     time.sleep(1)
                     if self.wait_by_css('.captchasnet_captcha_input_box', 10):
                         print("\n>> Capturing New Captcha image using Dynamic src attribute.")
-                        self.get_captcha2()
+                        if self.get_captcha2() == 1:
+                            return 4
+                        else:
+                            pass
+
+                        # Check if any error occurred
 
                         if self.is_visible_css_selector('#free_play_error', 1.5):
                             if 'Captcha is incorrect or has expired' not in self.driver.find_element_by_css_selector(
                                     '#free_play_error').text:
-                                print("""!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                                      Please Verify you account!!
-                                      !!!!!!!!!!!!!!!!!!!!!!!!!!!""")
+                                print("""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                         !!PLEASE VERIFY YOUR ACCOUNT!!
+                                         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""")
                                 return 3
 
                         else:
@@ -468,10 +552,27 @@ class HaxBitCoins(object):
 
                         if os.path.isfile(captcha_path):
                             # input("\nPress Enter to continue! ")
-                            print("\n>> Requesting answer from 2captcha..")
+                            print("\n>> Requesting answer from 2captcha..\n")
                             while True:
                                 ti = time.time()
-                                value = self.captcha.solve(captcha_path)
+                                rep = 5
+                                while True:
+                                    if not rep:
+                                        if not check_internet():
+                                            change_ip()
+                                            rep += 2
+                                        else:
+                                            rep += 2
+                                        continue
+                                    else:
+                                        try:
+                                            value = self.captcha.solve(captcha_path)
+                                        except:
+                                            print("There is a problem in getting answer, trying again.")
+                                            rep -= 1
+                                            continue
+                                        break
+
                                 print("Captcha answer is: ", str(value))
                                 tf = time.time()
                                 if value == 1:
@@ -482,12 +583,12 @@ class HaxBitCoins(object):
                                 else:
                                     break
                             print("Time took by 2captcha: %2.2f" % (tf - ti))
-                            print("\>> nEntering captcha value in the answer box.")
+                            print(">> Entering captcha value in the answer box.")
                             try:
                                 self.driver.find_element_by_css_selector('.captchasnet_captcha_input_box').send_keys(
                                     value)
                             except Exception as e:
-                                print("\nAn exception occured: ", e)
+                                print("\nAn exception occurred while entering answer: ", e)
                                 print("Can't input value into box, Enter it manually..")
                                 if self.enter_captcha():
                                     i += 1
@@ -496,7 +597,7 @@ class HaxBitCoins(object):
 
                         else:
                             print("Can't find captcha image")
-                            input("Press Enter to continue....")
+                            input("Press any key to continue....")
 
                         self.driver.find_element_by_xpath(roll_btn).click()
                         i += 1
@@ -513,17 +614,36 @@ class HaxBitCoins(object):
                             box = self.driver.find_element_by_css_selector('.captchasnet_captcha_input_box')
                             action.move_to_element(box).perform()
                         except Exception as e:
-                            print("\nAn exception occured: ", e)
+                            print("\nAn exception occured in moving to captcha box: ", e)
                             pass
                         print("\nCan't find captcha input box, Please input value in the browser and Press enter here!")
                         print("\n>> Getting captcha src attribute and saving image")
-                        self.get_captcha2()
+                        if self.get_captcha2() == 1:
+                            return 4
+                        else:
+                            pass
                         if os.path.isfile(captcha_path):
                             # input("\nPress Enter to continue!")
-                            print("\n>> Requesting answer from 2captcha..")
+                            print("\n>> Requesting answer from 2captcha..\n")
                             while True:
                                 ti = time.time()
-                                value = self.captcha.solve(captcha_path)
+                                rep = 5
+                                while True:
+                                    if not rep:
+                                        if not check_internet():
+                                            change_ip()
+                                            rep += 2
+                                        else:
+                                            rep += 2
+                                        continue
+                                    else:
+                                        try:
+                                            value = self.captcha.solve(captcha_path)
+                                        except:
+                                            print("There is a problem in getting answer, trying again.")
+                                            rep -= 1
+                                            continue
+                                        break
                                 print("Captcha answer is: ", str(value))
                                 tf = time.time()
                                 if value == 1:
@@ -543,11 +663,16 @@ class HaxBitCoins(object):
                         self.get_score()
                         i += 1
 
+            else:
+                return 1
         else:
             print("Something went wrong! Can't Find Roll table!!")
 
     def quit_fox(self):
         self.driver.quit()
+
+    def del_session(self):
+        self.driver.delete_all_cookies()
 
     def save_session(self, cookie_name):
         cookies = self.driver.get_cookies()
@@ -615,12 +740,12 @@ def check_internet():
         host = socket.gethostbyname(remote_server)
         s = socket.create_connection((host, 80), 2)
         s.getsockname()
-        return True
 
     except Exception as e:
-        print("\nAn exception occured: ", e)
-        pass
-    return False
+        print("\nAn exception occured in creating socket connection: ", e)
+        return False
+
+    return True
 
 
 def get_ip():
@@ -659,37 +784,37 @@ while True:
         continue
 
 
-def modem_off(connection):
-    os.system("rasdial " + connection + " /disconnect")
+def modem_on(connection, timet):
+    cmd = ["rasdial", connection]
+    subprocess.run(cmd, timet)
 
 
-def modem_on(connection):
-    os.system("rasdial " + connection)
-
+def modem_off(connection, timet):
+    cmd = ["rasdial", connection, "/disconnect"]
+    subprocess.run(cmd, timet)
 
 ips = []
 
 if ip_method == 1:
 
     if not check_internet():
-        modem_on(connection_name)
+        try:
+            modem_on(connection_name, 20)
+        except subprocess.TimeoutExpired:
+            print("Can't dial connection")
+            raise SystemExit(0)
 
 
     def change_ip():
         while True:
             try:
-                modem_off(connection_name)
-                time.sleep(1)
-
-                modem_on(connection_name)
-                time.sleep(3)
-
-            except Exception as e:
-                print("\nAn exception occurred: ", e)
-                print("Can't reach modem, check connection.")
+                modem_off(connection_name, 10)
+                print(" ")
+                modem_on(connection_name, 15)
+            except subprocess.TimeoutExpired:
+                print("Problem in Dialup connection, trying again..")
                 continue
-            else:
-                break
+            break
 
 else:
     mobile = AutomateMobile()
@@ -705,7 +830,7 @@ else:
                 time.sleep(3)
 
             except Exception as e:
-                print("\nAn exception occured: ", e)
+                print("\nAn exception occured while switching dialup: ", e)
                 print("Can't interact with Phone, check usb connection!")
                 continue
             else:
@@ -727,6 +852,11 @@ def check_pikle(new_ac_list):
 
 
 def main():
+    t_start = time.time()
+    print("\nBot started at: {0}".format(time.ctime(t_start)))
+    with open("start_time.txt", 'w') as time_file:
+        time_file.write(time.ctime(t_start))
+
     counter = 0
 
     print("\n>> Checking accounts file for new accounts...")
@@ -734,7 +864,7 @@ def main():
     try:
         acc_file = open("accounts.txt", "r")
     except Exception as e:
-        print("\nAn exception occured: ", e)
+        print("\nAn exception occured while opening accounts file: ", e)
         print("!!!! - Accounts.txt file not found. Refer documentation -!!!!")
         raise SystemExit(0)
 
@@ -786,8 +916,10 @@ def main():
             t2 = accounts_time.get(acc)
             time_been = t1 - float(t2)
             if time_been > float(60 * 60) or time_been == t1:
-
-                ip_now = get_ip()
+                try:
+                    ip_now = get_ip()
+                except:
+                    print("Can't get ip address")
                 if counter:
                     while ip_now == ips[-1]:
                         print("IP not changed, trying to change.")
@@ -799,14 +931,18 @@ def main():
 
                 ips.append(ip_now)
 
-                HaxObject = HaxBitCoins(browser_choice)
+                if not counter:
+                    HaxObject = HaxBitCoins(browser_choice)
 
                 print("Opening FreeBitcoin website.")
-                try:
-                    HaxObject.load_url(captcha_page)
-                except Exception as e:
-                    print("\nAn exception occured: ", e)
-                    print("Can't open url")
+                while True:
+                    try:
+                        HaxObject.load_url(captcha_page)
+                    except Exception as e:
+                        print("\nException occured while loading url: ", e)
+                        print("Can't open url")
+                        continue
+                    break
 
                 if os.path.isfile(dump_location + acc + ".hax"):
                     print("\nCookies file found - " + acc + ".hax")
@@ -819,33 +955,39 @@ def main():
                         print("Reloading and checking if on Homepage.")
                         HaxObject.load_url(captcha_page)
 
-                        if not HaxObject.is_element_clickable('//*[@id="free_play_form_button"]', 5):
-                            print("Can't restore previous session, trying to login..")
-                            HaxObject.load_url(captcha_page)
-                            with open('accounts.txt', 'r') as f:
-                                for line in f:
-                                    if acc in line:
-                                        user = line.split(':')[0].strip()
-                                        password = line.split(':')[1].strip()
+                    if not HaxObject.is_element_clickable('//*[@id="free_play_form_button"]', 5):
+                        print("Can't restore previous session, trying to login..")
+                        HaxObject.load_url(captcha_page)
+                        with open('accounts.txt', 'r') as f:
+                            for line in f:
+                                if acc in line:
+                                    user = line.split(':')[0].strip()
+                                    password = line.split(':')[1].strip()
 
-                            HaxObject.login_homepage(user, password)
-                            time.sleep(4)
-                        else:
-                            print("Success in restoring cookies: Homepage found!")
+                        HaxObject.login_homepage(user, password)
+                        time.sleep(4)
+                    else:
+                        print("Success in restoring cookies: Homepage found!")
 
-                    if HaxObject.roll_table() == 3:
+                    roll_status = HaxObject.roll_table()
+
+                    if roll_status == 3:
                         print("Check verify_accounts.txt file")
-                        with open("verify_accounts.txt", "w") as verify_ac:
+                        with open("verify_accounts.txt", "a") as verify_ac:
                             verify_ac.write(acc + "\n")
-                    elif HaxObject.roll_table() == 2:
+                    elif roll_status == 2:
                         print("Error: Too many Captcha attemps.")
+                    elif roll_status == 4:
+                        print("Can't capture Captcha image.")
                     else:
                         accounts_time[acc] = time.time()
                         pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
 
                     print("\nSaving current session cookies.")
                     HaxObject.save_session(dump_location + acc + ".hax")
-                    HaxObject.quit_fox()
+                    # HaxObject.quit_fox()
+                    print("\nDeleting current session!")
+                    HaxObject.del_session()
                 else:
                     with open('accounts.txt', 'r') as f:
                         for line in f:
@@ -856,24 +998,34 @@ def main():
                     print("No Cookie found for this account, Trying to Log in.")
                     HaxObject.login_homepage(user, password)
                     time.sleep(4)
-                    if HaxObject.roll_table() == 3:
+
+                    roll_status = HaxObject.roll_table()
+
+                    if roll_status == 3:
                         print("Check verify_accounts.txt file")
-                        with open("verify_accounts.txt", "w") as verify_ac:
+                        with open("verify_accounts.txt", "a") as verify_ac:
                             verify_ac.write(acc + "\n")
-                    elif HaxObject.roll_table() == 2:
+                    elif roll_status == 2:
                         print("Error: Too many Captcha attemps.")
+                    elif roll_status == 4:
+                        print("Can't capture Captcha image.")
                     else:
                         accounts_time[acc] = time.time()
                         pickle.dump(accounts_time, open("dumps/accounts_map.hk", "wb"))
                     print("Saving current session cookies.")
                     HaxObject.save_session(dump_location + acc + ".hax")
-                    HaxObject.quit_fox()
+                    # HaxObject.quit_fox()
+                    HaxObject.del_session()
 
                 counter += 1
 
+                t_now = time.time()
+                print("\nTime Elapsed: %2.2f minutes" % ((t_now - t_start) / 60))
+                print("Accounts processed: %d" % counter)
+
                 print("\nChanging your IP before Next Roll\n")
-                while not check_internet():
-                    change_ip()
+                change_ip()
+
                 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 
             else:
